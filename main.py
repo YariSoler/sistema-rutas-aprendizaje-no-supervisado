@@ -1,7 +1,11 @@
+
 from conocimiento import obtener_estaciones
 from reglas import validar_ruta
 from busqueda import encontrar_ruta
 from modelo_supervisado import entrenar_modelo, predecir_duracion
+from modelo_no_supervisado import (
+    entrenar_modelo as entrenar_modelo_no_supervisado,
+)
 
 
 def mostrar_estaciones(estaciones):
@@ -15,7 +19,6 @@ def mostrar_ruta(ruta):
     print("\nRUTA ENCONTRADA\n")
 
     for i, estacion in enumerate(ruta):
-
         if i < len(ruta) - 1:
             print(f"{estacion} ↓")
         else:
@@ -25,12 +28,7 @@ def mostrar_ruta(ruta):
 
 
 def buscar_ruta():
-    """
-    Ejecuta la búsqueda de rutas mediante el algoritmo A*.
-    """
-
     estaciones = obtener_estaciones()
-
     mostrar_estaciones(estaciones)
 
     print("\n------------------------------------------")
@@ -48,16 +46,14 @@ def buscar_ruta():
         destino_numero = int(destino_numero)
 
     except ValueError:
-        print(
-            "\nDebe ingresar números de estación válidos."
-        )
+        print("\nDebe ingresar números de estación válidos.")
         return
 
-    if origen_numero < 1 or origen_numero > len(estaciones):
+    if not 1 <= origen_numero <= len(estaciones):
         print("\nEl número de origen no es válido.")
         return
 
-    if destino_numero < 1 or destino_numero > len(estaciones):
+    if not 1 <= destino_numero <= len(estaciones):
         print("\nEl número de destino no es válido.")
         return
 
@@ -65,27 +61,22 @@ def buscar_ruta():
     destino = estaciones[destino_numero - 1]
 
     print("\n------------------------------------------")
-
     print(f"\nOrigen seleccionado: {origen}")
     print(f"Destino seleccionado: {destino}")
-
     print("\n------------------------------------------")
 
     if not validar_ruta(origen, destino, estaciones):
-
         print("\nNo se puede realizar la búsqueda.")
-
         return
 
     ruta = encontrar_ruta(
         origen,
         destino,
-        mostrar_proceso=True
+        mostrar_proceso=True,
     )
 
     if ruta:
         mostrar_ruta(ruta)
-
     else:
         print(
             "\nNo fue posible encontrar una ruta "
@@ -94,32 +85,16 @@ def buscar_ruta():
 
 
 def realizar_prediccion():
-    """
-    Ejecuta el componente de aprendizaje supervisado
-    para estimar la duración de un viaje.
-    """
-
     print("\n==========================================")
     print("       PREDICCIÓN DE DURACIÓN")
     print("==========================================")
 
     try:
+        hora = int(input("\nIngrese la hora del viaje (0-23): "))
 
-        # ------------------------------------------
-        # Validar hora
-        # ------------------------------------------
-
-        hora = int(
-            input("\nIngrese la hora del viaje (0-23): ")
-        )
-
-        if hora < 0 or hora > 23:
+        if not 0 <= hora <= 23:
             print("\nLa hora debe estar entre 0 y 23.")
             return
-
-        # ------------------------------------------
-        # Validar día de la semana
-        # ------------------------------------------
 
         dia_semana = int(
             input(
@@ -128,13 +103,9 @@ def realizar_prediccion():
             )
         )
 
-        if dia_semana < 0 or dia_semana > 6:
+        if not 0 <= dia_semana <= 6:
             print("\nEl día debe estar entre 0 y 6.")
             return
-
-        # ------------------------------------------
-        # Validar pasajeros
-        # ------------------------------------------
 
         pasajeros = int(
             input("Ingrese la cantidad de pasajeros: ")
@@ -147,46 +118,25 @@ def realizar_prediccion():
             )
             return
 
-        # ------------------------------------------
-        # Validar distancia
-        # ------------------------------------------
-
         distancia_km = float(
             input("Ingrese la distancia del recorrido (km): ")
         )
 
         if distancia_km <= 0:
-            print(
-                "\nLa distancia debe ser mayor que 0."
-            )
+            print("\nLa distancia debe ser mayor que 0.")
             return
-
-        # ------------------------------------------
-        # Validar número de paradas
-        # ------------------------------------------
 
         numero_paradas = int(
             input("Ingrese el número de paradas: ")
         )
 
         if numero_paradas <= 0:
-            print(
-                "\nEl número de paradas "
-                "debe ser mayor que 0."
-            )
+            print("\nEl número de paradas debe ser mayor que 0.")
             return
 
-        # ------------------------------------------
-        # Entrenar modelo
-        # ------------------------------------------
-
-        print("\nEntrenando modelo...")
+        print("\nEntrenando modelo supervisado...")
 
         modelo, mae, mse, r2 = entrenar_modelo()
-
-        # ------------------------------------------
-        # Realizar predicción
-        # ------------------------------------------
 
         prediccion = predecir_duracion(
             modelo,
@@ -194,17 +144,14 @@ def realizar_prediccion():
             dia_semana,
             pasajeros,
             distancia_km,
-            numero_paradas
+            numero_paradas,
         )
 
         print("\n------------------------------------------")
         print("RESULTADO DE LA PREDICCIÓN")
         print("------------------------------------------")
 
-        print(
-            f"Duración estimada: "
-            f"{prediccion:.1f} minutos"
-        )
+        print(f"Duración estimada: {prediccion:.1f} minutos")
 
         print("\nMétricas del modelo:")
         print(f"MAE: {mae:.2f} minutos")
@@ -212,50 +159,90 @@ def realizar_prediccion():
         print(f"R²: {r2:.2f}")
 
     except ValueError:
+        print("\nError: ingrese un valor numérico válido.")
+
+
+def agrupar_viajes():
+    print("\n==========================================")
+    print("       AGRUPAMIENTO DE VIAJES CON K-MEANS")
+    print("==========================================")
+
+    try:
+        (
+            modelo,
+            resultados,
+            inercia,
+            silueta,
+        ) = entrenar_modelo_no_supervisado()
+
+        print("\nRESUMEN DEL AGRUPAMIENTO")
+        print("------------------------------------------")
+
+        for grupo, datos_grupo in resultados.groupby("grupo"):
+            print(f"\nGrupo {grupo}:")
+            print(f"Cantidad de viajes: {len(datos_grupo)}")
+            print(
+                f"Pasajeros promedio: "
+                f"{datos_grupo['pasajeros'].mean():.2f}"
+            )
+            print(
+                f"Distancia promedio: "
+                f"{datos_grupo['distancia_km'].mean():.2f} km"
+            )
+            print(
+                f"Paradas promedio: "
+                f"{datos_grupo['numero_paradas'].mean():.2f}"
+            )
+            print(
+                f"Duración promedio: "
+                f"{datos_grupo['duracion_min'].mean():.2f} minutos"
+            )
+
+        print("\nMÉTRICAS DEL AGRUPAMIENTO")
+        print("------------------------------------------")
+        print(f"Inercia: {inercia:.2f}")
+        print(f"Coeficiente de silueta: {silueta:.3f}")
+
         print(
-            "\nError: ingrese un valor numérico válido."
+            "\nLos resultados completos están guardados en "
+            "datos/resultados_agrupamiento.csv"
         )
+
+    except (FileNotFoundError, ValueError) as error:
+        print(f"\nNo fue posible realizar el agrupamiento: {error}")
 
 
 def main():
-
     while True:
-
         print("\n==========================================")
         print("       SISTEMA INTELIGENTE DE RUTAS")
         print("==========================================")
 
         print("\n1. Buscar mejor ruta")
         print("2. Predecir duración del viaje")
-        print("3. Salir")
+        print("3. Agrupar viajes con K-Means")
+        print("4. Salir")
 
-        opcion = input(
-            "\nSeleccione una opción: "
-        ).strip()
+        opcion = input("\nSeleccione una opción: ").strip()
 
         if opcion == "1":
-
             buscar_ruta()
 
         elif opcion == "2":
-
             realizar_prediccion()
 
         elif opcion == "3":
+            agrupar_viajes()
 
+        elif opcion == "4":
             print(
                 "\nGracias por utilizar "
                 "el sistema inteligente de rutas."
             )
-
             break
 
         else:
-
-            print(
-                "\nOpción no válida. "
-                "Seleccione 1, 2 o 3."
-            )
+            print("\nOpción no válida. Seleccione del 1 al 4.")
 
 
 if __name__ == "__main__":
